@@ -132,7 +132,15 @@ async def root():
 
 @app.get("/classes")
 async def get_classes():
-    return {"classes": pokemon_classes}
+    chunk_size = 15
+    formatted = []
+
+    for i in range(0, len(pokemon_classes), chunk_size):
+        chunk = pokemon_classes[i:i + chunk_size]
+        formatted.append(", ".join(chunk))
+
+    return {"classes_by_row": formatted}
+
 
 @app.get("/health")
 async def health_check():
