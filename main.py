@@ -9,30 +9,38 @@ import requests
 
 app = FastAPI(title="Pokemon Classifier API", version="1.0.0", description="Gen 1 Pokemon Classification API")
 
-# Add CORS middleware for Next.js frontend
+#Add CORS middleware for Next.js frontend
+#Basically fast api attaches middleware to hand cross origin resousrce sharing since hosted differently
+#Corsm intercepts HTTP req and decides if allowed dep on origin methods,headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js default port
+    allow_origins=["http://localhost:3000"],  #Next.js default port
+    #like cookies more to it tho...
     allow_credentials=True,
+    #Below is for GET POST PUT DELETE so all of em etc
     allow_methods=["*"],
+    #Content-type, auth if using user autho from front end requ
+    #Maybe Change this to specifics later
     allow_headers=["*"],
 )
 
-# Global variables
+#Global variables
 model = None
 pokemon_classes = []
 
+#FastAPI decorator to run specific funtciotn  auto start when apps starts before api req
 @app.on_event("startup")
+#async for await later and other functions
 async def load_model():
     """Load the model and Pokemon classes when the API starts"""
     global model, pokemon_classes
     try:
-        # Load your trained model
+        #Loading the model
         model_path = "Dexter_PokemonGen1Ai27.h5"
         model = tf.keras.models.load_model(model_path)
         print(f"Model loaded successfully from {model_path}")
         
-        # Load Pokemon class names from JSON file
+        #Load Pokemon class names from JSON file
         with open("PokeData.json", "r") as f:
             pokemon_classes = json.load(f)
         
@@ -42,6 +50,7 @@ async def load_model():
         print(f"Error loading model: {e}")
         raise e
 
+#Fectching data from poke api like the old project.
 def fetch_pokemon_info(pokemon_name: str) -> Optional[Dict]:
     """
     Fetch Pokemon information from PokeAPI
@@ -57,7 +66,7 @@ def fetch_pokemon_info(pokemon_name: str) -> Optional[Dict]:
             weight = data['weight'] / 10 
             sprite_url = data['sprites']['front_default']
             
-            # Fetch species info for habitat and flavor text
+            #Fetch species info for habitat and flavor text
             species_url = data['species']['url']
             species_response = requests.get(species_url)
             
@@ -67,17 +76,17 @@ def fetch_pokemon_info(pokemon_name: str) -> Optional[Dict]:
             if species_response.status_code == 200:
                 species_data = species_response.json()
                 
-                # Get habitat
+                #Get habitat
                 if 'habitat' in species_data and species_data['habitat']:
                     habitat = species_data['habitat']['name'].capitalize()
                 
-                # Get flavor text
+                #Get flavor text
                 for entry in species_data['flavor_text_entries']:
                     if entry['language']['name'] == 'en':
                         flavor_text = entry['flavor_text']
                         break
                 
-                # Clean up flavor text
+                #Clean up flavor text
                 flavor_text = flavor_text.replace("\n", " ")
                 flavor_text = ' '.join(flavor_text.split())
             
@@ -97,20 +106,21 @@ def fetch_pokemon_info(pokemon_name: str) -> Optional[Dict]:
         print(f"Error fetching Pokemon info: {e}")
         return None
 
+#Model was trained specifically using CV2 changes and specific image dets, just prerpossing images here.
 def preprocess_image(image_bytes: bytes) -> np.ndarray:
     """
     Preprocess image using CV2 method to match your training
     """
     try:
-        # Convert bytes to numpy array
+        #Convert bytes to numpy array
         nparr = np.frombuffer(image_bytes, np.uint8)
-        # Decode image
+        #Decode image
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        # Resize to match your model's expected input (224x224)
+        #Resize to match your model's expected input (224x224)
         image = cv2.resize(image, (224, 224))
-        # Normalize (0-1 range)
+        #Normalize (0-1 range)
         image = image / 255.0
-        # Add batch dimension
+        #Add batch dimension
         image = np.expand_dims(image, axis=0)
         return image
     except Exception as e:
@@ -119,6 +129,10 @@ def preprocess_image(image_bytes: bytes) -> np.ndarray:
 @app.get("/")
 async def root():
     return {"message": "Pokemon Classifier API is running"}
+
+@app.get("/classes")
+async def get_classes():
+    return {"classes": pokemon_classes}
 
 @app.get("/health")
 async def health_check():
@@ -133,21 +147,21 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Model not loaded")
     
     try:
-        # Read the uploaded file
+        #Read the uploaded file
         contents = await file.read()
         
-        # Preprocess the image
+        #Preprocess the image
         processed_image = preprocess_image(contents)
         
-        # Make prediction
+        #Make prediction
         predictions = model.predict(processed_image)
         predicted_idx = np.argmax(predictions, axis=1)[0]
         confidence = float(predictions[0][predicted_idx])
         
-        # Get predicted Pokemon name
+        #Get predicted Pokemon name
         predicted_pokemon = pokemon_classes[predicted_idx]
         
-        # Fetch Pokemon information from PokeAPI
+        #Fetch Pokemon information from PokeAPI
         pokemon_info = fetch_pokemon_info(predicted_pokemon)
         
         response = {
