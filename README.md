@@ -32,3 +32,14 @@ numpy==1.19.5
 pillow==8.4.0
 python-multipart==0.0.5
 opencv-python==4.5.3.56
+
+
+# For rq i think
+
+fastapi==0.68.0
+uvicorn[standard]==0.15.0
+tensorflow==2.4.0
+opencv-python==4.8.1.78
+requests==2.31.0
+python-multipart==0.0.6
+numpy==1.19.5
