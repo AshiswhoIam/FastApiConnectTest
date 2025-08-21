@@ -43,3 +43,9 @@ opencv-python==4.8.1.78
 requests==2.31.0
 python-multipart==0.0.6
 numpy==1.19.5
+
+
+
+
+
+Using hugging space and docker, deployement works so far for fastapi.
